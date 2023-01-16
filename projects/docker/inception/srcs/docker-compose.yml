@@ -1,0 +1,120 @@
+# **************************************************************************** #
+#                                                                              #
+#                                                         :::      ::::::::    #
+#    docker-compose.yml                                 :+:      :+:    :+:    #
+#                                                     +:+ +:+         +:+      #
+#    By: wszurkow <wszurkow@student.42.fr>          +#+  +:+       +#+         #
+#                                                 +#+#+#+#+#+   +#+            #
+#    Created: 2022/07/08 21:57:48 by wszurkow          #+#    #+#              #
+#    Updated: 2022/07/08 22:03:18 by wszurkow         ###   ########.fr        #
+#                                                                              #
+# **************************************************************************** #
+
+services:
+  #------------------------------------------------------#
+  mariadb:
+    #tty: true
+    build          :
+        context: requirements/mariadb/
+        args:
+          MYSQL_ADMIN_NAME    : ${MYSQL_ADMIN_NAME}
+          #MYSQL_USER_PASSWORD: password
+          #MYSQL_DATABASE_NAME: MYSQL_DATABASE
+    image          : mariadb:$INCEPTION_VERSION
+    container_name : mariadb
+    expose          :
+      - 3306
+    volumes        :
+      - mariadb:/data
+    restart        : unless-stopped
+    networks       :
+      - inception
+    environment    :
+      #- MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE_NAME=${MYSQL_DATABASE_NAME}
+      - MYSQL_USER_NAME=${MYSQL_USER_NAME}
+      - MYSQL_USER_PASS=${MYSQL_USER_PASS}
+      - MYSQL_ADMIN_NAME=${MYSQL_ADMIN_NAME}
+  #------------------------------------------------------#
+  wordpress:
+    build          :
+      context      : requirements/wordpress
+      args         :
+        MYSQL_ADMIN_NAME : ${MYSQL_ADMIN_NAME}
+    image          : wordpress:${INCEPTION_VERSION}
+    container_name : wordpress
+    depends_on     :
+      - mariadb
+    expose          :
+      - 9000
+    volumes        :
+      - wordpress:/wordpress
+    restart        : unless-stopped
+    networks       :
+      - inception
+    environment    :
+      - USER_LOGIN=${USER_LOGIN}
+      - DOMAIN_NAME=${DOMAIN_NAME}
+      - MYSQL_USER_NAME=${MYSQL_USER_NAME}
+      - MYSQL_USER_PASS=${MYSQL_USER_PASS}
+      - MYSQL_ADMIN_NAME=${MYSQL_ADMIN_NAME}
+      - MYSQL_DATABASE_NAME=${MYSQL_DATABASE_NAME}
+      - WORDPRESS_ADMIN_NAME=${WORDPRESS_ADMIN_NAME}
+      - WORDPRESS_ADMIN_PASS=${WORDPRESS_ADMIN_PASS}
+      - WORDPRESS_ADMIN_MAIL=${WORDPRESS_ADMIN_MAIL}
+      - WORDPRESS_USER_NAME=${WORDPRESS_USER_NAME}
+      - WORDPRESS_USER_PASS=${WORDPRESS_USER_PASS}
+      - WORDPRESS_USER_MAIL=${WORDPRESS_USER_MAIL}
+
+  #------------------------------------------------------#
+  nginx:
+    build          :
+      context: requirements/nginx/
+      args:
+        MYSQL_ADMIN_NAME : ${MYSQL_ADMIN_NAME}
+    image          : nginx:${INCEPTION_VERSION}
+    container_name : nginx
+    depends_on     :
+      - wordpress
+    ports          :
+      - 443:443
+    restart        : unless-stopped
+    networks       :
+      - inception
+    volumes        :
+      - wordpress:/wordpress
+    environment    :
+      - USER_LOGIN=${USER_LOGIN}
+      - LOGIN=${LOGIN}
+      - DOMAIN_NAME=${DOMAIN_NAME}
+      - COUNTRY=${COUNTRY}
+      - STATE_CODE=${STATE_CODE}
+      - LOCATION=${LOCATION}
+      - ORGANISATION=${ORGANISATION}
+
+##########################################################
+
+volumes:
+  #------------------------------------------------------#
+  wordpress:
+    driver         : local
+    driver_opts    :
+      type : none
+      o    : bind
+      device       : ${HOST_SHARED_VOLUME}/wordpress
+  #------------------------------------------------------#
+  mariadb:
+    driver         : local
+    driver_opts    :
+      type : none
+      o    : bind
+      device       : ${HOST_SHARED_VOLUME}/mariadb
+
+
+##########################################################
+networks :
+  inception :
+    driver: bridge
+
+
+
